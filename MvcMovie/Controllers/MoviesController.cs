@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
 using System.Data.Entity;
 using System.Linq;
 using System.Net;
-using System.Web;
 using System.Web.Mvc;
 using MvcMovie.Models;
+using PagedList;
 
 namespace MvcMovie.Controllers
 {
@@ -14,24 +13,55 @@ namespace MvcMovie.Controllers
     {
         private MovieDBContext db = new MovieDBContext();
 
-/*        // GET: Movies
-        public ActionResult Index(string searchString)
-        {
-            var movies = from m in db.Movies
-                         select m;
 
-            if (!String.IsNullOrEmpty(searchString))
-            {
-                movies = movies.Where(s => s.Title.Contains(searchString));
-            }
+        /*        // GET: Movies
+                public ActionResult Index(string movieGenre, string searchString)
+                {
+                    var GenreLst = new List<string>();
 
-            return View(movies);
-        }
-*/
+                    var GenreQry = from d in db.Movies
+                                   orderby d.Genre
+                                   select d.Genre;
+
+                    GenreLst.AddRange(GenreQry.Distinct());
+                    ViewBag.movieGenre = new SelectList(GenreLst);//, "Comedy"); it's default option
+
+                    var movies = from m in db.Movies
+                                 select m;
+
+                    if (!string.IsNullOrEmpty(searchString))
+                    {
+                        movies = movies.Where(s => s.Title.Contains(searchString));
+                    }
+
+                    if (!string.IsNullOrEmpty(movieGenre))
+                    {
+                        movies = movies.Where(x => x.Genre == movieGenre);
+                    }
+
+                    return View(movies);
+                }
+        */
 
         // GET: Movies
-        public ActionResult Index(string movieGenre, string searchString)
+        public ActionResult Index(string sortOrder, string movieGenre, string searchString, string currentFilter, int? page)
         {
+            ViewBag.CurrentSort = sortOrder;
+            ViewBag.TitleSortParam = string.IsNullOrEmpty(sortOrder) ? "title_desc" : "";
+            ViewBag.DateSortParam = sortOrder == "Date" ? "date_desc" : "Date";
+            ViewBag.PriceSortParam = sortOrder == "Price" ? "price_desc" : "Price";
+
+            if (searchString != null)
+            {
+                page = 1;
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
+
+            ViewBag.CurrentFilter = searchString;
+
             var GenreLst = new List<string>();
 
             var GenreQry = from d in db.Movies
@@ -54,7 +84,31 @@ namespace MvcMovie.Controllers
                 movies = movies.Where(x => x.Genre == movieGenre);
             }
 
-            return View(movies);
+            switch (sortOrder)
+            {
+                case "title_desc":
+                    movies = movies.OrderByDescending(m => m.Title);
+                    break;
+                case "Date":
+                    movies = movies.OrderBy(m => m.ReleaseDate);
+                    break;
+                case "date_desc":
+                    movies = movies.OrderByDescending(m => m.ReleaseDate);
+                    break;
+                case "Price":
+                    movies = movies.OrderBy(m => m.Price);
+                    break;
+                case "price_desc":
+                    movies = movies.OrderByDescending(m => m.Price);
+                    break;
+                default: // Title ascending
+                    movies = movies.OrderBy(m => m.Title);
+                    break;
+            }
+
+            int pageSize = 3;
+            int pageNumber = (page ?? 1);
+            return View(movies.ToPagedList(pageNumber, pageSize));
         }
 
         // GET: Movies/Details/5
